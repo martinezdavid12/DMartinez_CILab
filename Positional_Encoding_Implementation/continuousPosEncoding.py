@@ -114,9 +114,9 @@ inputModel = MLP(input_shape=512,
               hidden_units=256,
               output_shape=3).to(device)
 
-inputModel.load_state_dict(torch.load(f='models/pos_encoding_gauss_25_c_elegans_frame_49.pth'))
+inputModel.load_state_dict(torch.load(f='models/pos_encoding_gauss_25_c_elegans_frame_99.pth'))
 
-for t in range(50,151):
+for t in range(100,151):
     testFrame = video[t]
     #Square the image
     l = min(2*(props.shape[1]//2), 2*(props.shape[2]//2))
