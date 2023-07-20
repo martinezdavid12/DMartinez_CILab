@@ -5,6 +5,7 @@ import torch
 
 from ray_utils import get_rays, get_ray_directions, get_ndc_rays
 
+torch.cuda.set_device("cuda:2")
 
 BOX_OFFSETS = torch.tensor([[[i,j,k] for i in [0, 1] for j in [0, 1] for k in [0, 1]]],
                                device='cuda')

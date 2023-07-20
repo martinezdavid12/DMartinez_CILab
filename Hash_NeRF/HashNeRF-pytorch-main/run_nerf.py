@@ -26,12 +26,27 @@ from load_blender import load_blender_data
 from load_scannet import load_scannet_data
 from load_LINEMOD import load_LINEMOD_data
 
+#
+print("Cuda available: ", torch.cuda.is_available())
+if(torch.cuda.is_available()):
+    torch.cuda.set_device("cuda:2")
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Is cuDNN version:", torch.backends.cudnn.version())
+
+    print("cuDNN enabled:a", torch.backends.cudnn.enabled)
+
+    print("Device count: ", torch.cuda.device_count())
+
+    print("Current device: ", torch.cuda.current_device())
+
+    print("Device name: ", torch.cuda.get_device_name(torch.cuda.current_device()))
+#Setup device agnostic code (i.e use GPU if possible)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+gpuNum = 1
+print(device)
 np.random.seed(0)
 DEBUG = False
-
-
+#
 def batchify(fn, chunk):
     """Constructs a version of 'fn' that applies to smaller batches.
     """
