@@ -1,4 +1,4 @@
-#Other code
+
 class multiresHashNerf(tf.keras.Model):
     def __init__(self, hidden_layer_list, L=16, T=2**18, F=2, N_min=16, N_max=512, output_nonlinearity='relu',
                  num_output=1,
@@ -24,6 +24,7 @@ class multiresHashNerf(tf.keras.Model):
         self.N_values = tf.constant(np.float32(N_min * b ** np.arange(L)))  # multi-resolution
         self.hash_table = tf.Variable(tf.random.uniform(shape=(L, T, F), minval=-1e-4, maxval=1e-4,
                                                         dtype=tf.float32, seed=seed))
+        
         self.vertices = tf.constant(np.array([[0, 0, 0, 0],
                                               [0, 0, 0, 1],
                                               [0, 0, 1, 0],
@@ -69,7 +70,7 @@ class multiresHashNerf(tf.keras.Model):
         x_floored = tf.math.floor(x_scaled)
 
         # 16 vertices in xyzt space:
-        x_vertices = x_floored[:, :, :, None] + self.vertices[None, :, None, :]  # shape: num_points, 4, L, 16
+        x_vertices = x_floored[:, :, :, None] * self.vertices[None, :, None, :]  # shape: num_points, 4, L, 16
 
         x_vertices = tf.cast(x_vertices, dtype=tf.int64)
         x_to_hash = x_vertices * self.prime_numbers[None, :, None, None]
