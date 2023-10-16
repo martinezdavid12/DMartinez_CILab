@@ -84,6 +84,7 @@ class multiresHashNerf(tf.keras.Model):
         # transpose for map_fn:
         x_hash = tf.transpose(x_hash, [1, 0, 2])  # shape: L, num_points, 16
         # lookup hash table:
+        
         gather = lambda a: tf.gather(a[0], a[1], axis=0)
         lookup = tf.map_fn(gather, (self.hash_table, x_hash), fn_output_signature=tf.float32)  # shape: L, num_points, 16, F
         lookup = tf.transpose(lookup, [1, 0, 2, 3])  # shape: num_points, L, 16, F
