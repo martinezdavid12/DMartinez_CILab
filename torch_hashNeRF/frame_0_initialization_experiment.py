@@ -166,7 +166,6 @@ import math
 from pathlib import Path
 def PSNR(MSELoss, max):
     return (20*math.log10(max)) - (10*math.log10(MSELoss))
-
 def saveModel(modelPointer, psnr_note=35, frameNumber=0):
     # 1. Create models directory - won't create if it exists
     MODEL_PATH = Path("c_elegans_models")
@@ -179,11 +178,7 @@ def saveModel(modelPointer, psnr_note=35, frameNumber=0):
             f=MODEL_SAVE_PATH)
     print(MODEL_SAVE_PATH)
 
-#prologue to saveImage
-
-
 def saveImage(frame_note, psnr_note=39):
-    model_0.eval()
     x_test_T = torch.as_tensor(croppedVideo[100])
     reconstruction_input_matrix = torch.zeros(croppedVideo[100].shape[0], croppedVideo[100].shape[1], 2).type(torch.float32)
     #encode coordinates into debug matrix
@@ -191,7 +186,6 @@ def saveImage(frame_note, psnr_note=39):
         for j in range(0, x_test_T.shape[1]):
             reconstruction_input_matrix[i][j] = torch.as_tensor([i/(video.shape[1]-1.0),j/(video.shape[2]-1.0)]).type(torch.float32)
     reconstruction_input_matrix = torch.flatten(reconstruction_input_matrix, 0, 1)
-    im_psnr_note = 40
     model_0.eval()
     with torch.inference_mode():
         reconstruction = model_0(reconstruction_input_matrix).cpu()
@@ -201,10 +195,20 @@ def saveImage(frame_note, psnr_note=39):
         plt.axis(False)
         plt.savefig("c_elegans_reconstructions_ex1/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
+
+numFrames = 100
+time_series = np.zeros((numFrames+1, 6), dtype=float) # numFrames * (initial, 25, 27.5, 30, 35, 40)
+epoch_series = np.zeros((numFrames+1, 6), dtype=float) # numFrames * (initial, 25, 27.5, 30, 35, 40)
+loss_series =  np.zeros((numFrames+1, 6), dtype=float)
+
+time_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
+epoch_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
+loss_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
+
 # initialize model
 init = hashNerf(32, 128, 3)
 #replace with len of video
-for t in range(0,100):
+for t in range(0, numFrames):
     if t == 0:
         model_0 = hashNerf(32, 128, 3)
     else:
@@ -216,14 +220,19 @@ for t in range(0,100):
     optimizer = torch.optim.Adam(params=model_0.parameters(), lr=lr1, eps=10e-15)
     # Training Loop
     start = timer()
-    PSNR_thresh = 39.00
+    PSNR_thresh = 40
     train_loader = DataLoader(training_data, batch_size=2**14, shuffle=True)
     batchCount = 0
     psnr_table = []
     savedAt25 = False
+    savedAt27_5 = False
     savedAt30 = False
+    savedAt35 = False
+    savedAt39 = False
     exit_loop = False
     for epoch in tqdm(range(0,100)):
+        if exit_loop:
+            break
         model_0.train()
         for batch in iter(train_loader):
             batchCount += 1
@@ -239,18 +248,50 @@ for t in range(0,100):
             optimizer.step()
         psnr = PSNR(loss, 1.0)
         psnr_table.append(psnr)
-        if (savedAt25 == False) and (psnr >= 25):
-            #saveModel(model_0, 25, 0)
+        if epoch == 0:
+            time_series[t+1][0] = 0
+            epoch_series[t+1][0] = epoch
+            loss_series[t+1][0] = loss
+        if (savedAt25 == False) and (psnr >= 25) and (psnr < 30):
+            endT = timer()
+            time_series[t+1][1] = endT - start
+            epoch_series[t+1][1] = epoch
+            loss_series[t+1][1] = loss
             saveImage(t, 25)
             savedAt25 = True
-        elif (savedAt30 == False) and (psnr >= 30):
+        elif (savedAt27_5 == False) and (psnr >= 27.5) and (psnr < 30):
+            endT = timer()
+            time_series[t+1][2] = endT - start
+            epoch_series[t+1][2] = epoch
+            loss_series[t+1][2] = loss
+            saveImage(t, 25)
+            savedAt27_5 = True
+        elif (savedAt30 == False) and (psnr >= 30) and (psnr < 39):
             lr1 = lr1/10
-            #saveModel(model_0, 30, 0)
+            endT = timer()
+            time_series[t+1][3] = endT - start
+            epoch_series[t+1][3] = epoch
+            loss_series[t+1][3] = loss
             saveImage(t, 30)
             savedAt30 = True
+        elif (savedAt35 == False) and (psnr >= 35) and (psnr < 39):
+            lr1 = lr1/10
+            endT = timer()
+            time_series[t+1][4] = endT - start
+            epoch_series[t+1][4] = epoch
+            loss_series[t+1][4] = loss
+            saveImage(t, 30)
+            savedAt35 = True
+        elif (savedAt39 == False) and (psnr >= 39):
+            lr1 = lr1/10
+            savedAt39 = True
         elif (psnr >= PSNR_thresh):
+            endT = timer()
+            time_series[t+1][5] = endT - start
+            epoch_series[t+1][5] = epoch
+            loss_series[t+1][5] = loss
             saveImage(t, PSNR_thresh)
-            #saveModel(model_0, PSNR_thresh, t)
+            exit_loop = True
             break
         if epoch % 1 == 0:
             print(f"Epoch: {epoch} | LR: {lr1} | Train loss: {loss} | PSNR: {psnr}")
@@ -259,6 +300,7 @@ for t in range(0,100):
     print('time: ', str(time_elapsed))
     print('Training Finished')
     #Plot PSNR
+    plt.ylim(0, 45)
     plt.plot(range(0,len(psnr_table)), psnr_table)
     plt.title('Train PSNR - Frame: '+str(t))
     plt.ylabel('PSNR')
@@ -268,7 +310,11 @@ for t in range(0,100):
     plt.close()
     if t == 0:
         init = model_0 # set initial model for later use
-    
+#epilogue
+np.savetxt('time_series_ex1.csv', time_series, delimiter=',', fmt='%f')
+np.savetxt('epoch_series_ex1.csv', epoch_series, delimiter=',', fmt='%f')
+np.savetxt('loss_series_ex1.csv', loss_series, delimiter=',', fmt='%f')
+print("Training Finished")
 
 
 
