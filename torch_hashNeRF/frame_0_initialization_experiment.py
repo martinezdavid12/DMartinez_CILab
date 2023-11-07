@@ -193,10 +193,10 @@ def saveImage(frame_note, psnr_note=39):
         reconstruction = torch.mul(reconstruction, 255.0).type(torch.int32)
         plt.imshow(reconstruction)
         plt.axis(False)
-        plt.savefig("c_elegans_reconstructions_ex1/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
+        plt.savefig("c_elegans_reconstructions_ex4/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
 
-numFrames = 100
+numFrames = 20
 time_series = np.zeros((numFrames+1, 6), dtype=float) # numFrames * (initial, 25, 27.5, 30, 35, 40)
 epoch_series = np.zeros((numFrames+1, 6), dtype=float) # numFrames * (initial, 25, 27.5, 30, 35, 40)
 loss_series =  np.zeros((numFrames+1, 6), dtype=float)
@@ -212,8 +212,8 @@ for t in range(0, numFrames):
     if t == 0:
         model_0 = hashNerf(32, 128, 3)
     else:
-        model_0 = init
-    workingFrame = video[t]
+        model_0 = copy.deepcopy(init)
+    workingFrame = video[t*20]
     training_data = SingleImageDataset(workingFrame)
     lr1 = 0.01
     loss_fn = torch.nn.MSELoss()
@@ -275,7 +275,7 @@ for t in range(0, numFrames):
             saveImage(t, 30)
             savedAt30 = True
         elif (savedAt35 == False) and (psnr >= 35) and (psnr < 39):
-            lr1 = lr1/10
+            #lr1 = lr1/10
             endT = timer()
             time_series[t+1][4] = endT - start
             epoch_series[t+1][4] = epoch
@@ -306,14 +306,14 @@ for t in range(0, numFrames):
     plt.ylabel('PSNR')
     #NOT EPOCHS - THESE ARE BATCHES!!!
     plt.xlabel('Epoch')
-    plt.savefig("c_elegans_psnr_plots_ex1/hash_nerf_reconstruction_frame_"+str(t)+".png", bbox_inches="tight")
+    plt.savefig("c_elegans_psnr_plots_ex4/hash_nerf_reconstruction_frame_"+str(t)+".png", bbox_inches="tight")
     plt.close()
     if t == 0:
         init = model_0 # set initial model for later use
 #epilogue
-np.savetxt('time_series_ex1.csv', time_series, delimiter=',', fmt='%f')
-np.savetxt('epoch_series_ex1.csv', epoch_series, delimiter=',', fmt='%f')
-np.savetxt('loss_series_ex1.csv', loss_series, delimiter=',', fmt='%f')
+np.savetxt('time_series_ex4.csv', time_series, delimiter=',', fmt='%f')
+np.savetxt('epoch_series_ex4.csv', epoch_series, delimiter=',', fmt='%f')
+np.savetxt('loss_series_ex4.csv', loss_series, delimiter=',', fmt='%f')
 print("Training Finished")
 
 

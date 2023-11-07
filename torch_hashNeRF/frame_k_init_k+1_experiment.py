@@ -39,7 +39,7 @@ else:
 #Set device
 print("Cuda available: ", torch.cuda.is_available())
 if(torch.cuda.is_available()):
-    torch.cuda.set_device("cuda:0")
+    torch.cuda.set_device("cuda:1")
     print("Is cuDNN version:", torch.backends.cudnn.version())
     print("cuDNN enabled:a", torch.backends.cudnn.enabled)
     print("Device count: ", torch.cuda.device_count())
@@ -146,6 +146,7 @@ import math
 from pathlib import Path
 def PSNR(MSELoss, max):
     return (20*math.log10(max)) - (10*math.log10(MSELoss))
+
 def saveModel(modelPointer, psnr_note=35, frameNumber=0):
     # 1. Create models directory - won't create if it exists
     MODEL_PATH = Path("c_elegans_models")
@@ -173,14 +174,19 @@ def saveImage(frame_note, psnr_note=39):
         reconstruction = torch.mul(reconstruction, 255.0).type(torch.int32)
         plt.imshow(reconstruction)
         plt.axis(False)
-        plt.savefig("c_elegans_reconstructions_ex3/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
+        plt.savefig("c_elegans_reconstructions_ex4/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
 
-numFrames = 20
+
+numFrames = 25
 
 time_series = np.zeros((numFrames+1, 6), dtype=float) # numFrames * (initial, 25, 27.5, 30, 35, 40)
 epoch_series = np.zeros((numFrames+1, 6), dtype=float) # numFrames * (initial, 25, 27.5, 30, 35, 40)
 loss_series =  np.zeros((numFrames+1, 6), dtype=float)
+
+
+loss_at_epoch = []
+psnr_at_epoch = []
 
 time_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
 epoch_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
@@ -199,9 +205,10 @@ for t in range(0, numFrames):
     optimizer = torch.optim.Adam(params=model_0.parameters(), lr=lr1, eps=10e-15)
     # Training Loop
     start = timer()
-    PSNR_thresh = 40
+    PSNR_thresh = 38
     batchCount = 0
     psnr_table = []
+    psnr_table_epochs = []
     savedAt25 = False
     savedAt27_5 = False
     savedAt30 = False
@@ -210,7 +217,7 @@ for t in range(0, numFrames):
     exit_loop = False
 
     #same model used all time - i.e. weights carry over
-    for epoch in tqdm(range(0,50)):
+    for epoch in tqdm(range(0,100)):
         if exit_loop:
             break
         model_0.train()
@@ -228,6 +235,8 @@ for t in range(0, numFrames):
             optimizer.step()
         psnr = PSNR(loss, 1.0)
         psnr_table.append(psnr)
+        loss_at_epoch.append(loss)
+        psnr_at_epoch.append(psnr)
         if epoch == 0:
             time_series[t+1][0] = 0
             epoch_series[t+1][0] = epoch
@@ -247,7 +256,7 @@ for t in range(0, numFrames):
             saveImage(t, 25)
             savedAt27_5 = True
         elif (savedAt30 == False) and (psnr >= 30) and (psnr < 39):
-            lr1 = lr1/10
+            lr1 = lr1/2
             endT = timer()
             time_series[t+1][3] = endT - start
             epoch_series[t+1][3] = epoch
@@ -255,16 +264,13 @@ for t in range(0, numFrames):
             saveImage(t, 30)
             savedAt30 = True
         elif (savedAt35 == False) and (psnr >= 35) and (psnr < 39):
-            lr1 = lr1/10
+            #lr1 = lr1/10
             endT = timer()
             time_series[t+1][4] = endT - start
             epoch_series[t+1][4] = epoch
             loss_series[t+1][4] = loss
             saveImage(t, 30)
             savedAt35 = True
-        elif (savedAt39 == False) and (psnr >= 39):
-            lr1 = lr1/10
-            savedAt39 = True
         elif (psnr >= PSNR_thresh):
             endT = timer()
             time_series[t+1][5] = endT - start
@@ -277,22 +283,43 @@ for t in range(0, numFrames):
             print(f"Epoch: {epoch} | LR: {lr1} | Train loss: {loss} | PSNR: {psnr}")
     end = timer()
     time_elapsed = end - start
+    
     print('time: ', str(time_elapsed))
     print('Training Finished')
     #Plot PSNR
     plt.ylim(0, 45)
     plt.plot(range(0,len(psnr_table)), psnr_table)
-    plt.title('Train PSNR - Frame: '+str(t))
+    plt.title('Train PSNR - Frame: '+str(t*40))
     plt.ylabel('PSNR')
     #NOT EPOCHS - THESE ARE BATCHES!!!
     plt.xlabel('Epoch')
-    plt.savefig("c_elegans_psnr_plots_ex3/hash_nerf_reconstruction_frame_"+str(t)+".png", bbox_inches="tight")
+    plt.savefig("c_elegans_psnr_plots_ex4/hash_nerf_reconstruction_frame_"+str(t*40)+".png", bbox_inches="tight")
     plt.close()
 
+loss_at_epoch = torch.tensor(loss_at_epoch).cpu().numpy()
+psnr_at_epoch = torch.tensor(psnr_at_epoch).cpu().numpy()
+
 #epilogue
-np.savetxt('time_series_ex3.csv', time_series, delimiter=',', fmt='%f')
-np.savetxt('epoch_series_ex3.csv', epoch_series, delimiter=',', fmt='%f')
-np.savetxt('loss_series_ex3.csv', loss_series, delimiter=',', fmt='%f')
+np.savetxt('time_series_ex5.csv', time_series, delimiter=',', fmt='%f')
+np.savetxt('epoch_series_ex5.csv', epoch_series, delimiter=',', fmt='%f')
+np.savetxt('loss_series_ex5.csv', loss_series, delimiter=',', fmt='%f')
+np.savetxt('loss_at_epoch_ex5.csv', loss_at_epoch, delimiter=',', fmt='%f')
+np.savetxt('psnr_at_epoch_ex5.csv', psnr_at_epoch, delimiter=',', fmt='%f')
+#plot net psnrs
+plt.plot(range(0,len(psnr_at_epoch)), psnr_at_epoch)
+plt.title('Train PSNR per epoch')
+plt.ylabel('PSNR')
+plt.xlabel('Epoch')
+plt.savefig("c_elegans_psnr_plots_ex4/hash_nerf_reconstruction_all_frames.png", bbox_inches="tight")
+plt.close()
+#plot loss over all epochs
+#plot net psnrs
+plt.plot(range(0,len(loss_at_epoch)), loss_at_epoch)
+plt.title('Train loss per epoch')
+plt.ylabel('MSE Loss')
+plt.xlabel('Epoch')
+plt.savefig("c_elegans_psnr_plots_ex4/hash_nerf_reconstruction_all_frames_loss.png", bbox_inches="tight")
+plt.close()
 print("Training Finished")
 
 
