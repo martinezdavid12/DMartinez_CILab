@@ -56,7 +56,7 @@ class hashNerf(nn.Module):
                 input_shape: int,
                 hidden_units: int,
                 output_shape: int,
-                L=16, T=2**18, F=2, N_min=16, N_max=1024, num_output=3):
+                L=16, T=2**18, F=2, N_min=16, N_max=256, num_output=3):
         self.L = L
         self.T = T
         self.F = F
@@ -138,8 +138,8 @@ class SingleImageDataset(Dataset):
         col = idx % int(self.image.shape[1])
         pixel = torch.as_tensor(self.image[row][col]).type(torch.float32).to(device)
         #label = pixel 
-        row = row / (self.image.shape[0]-1)
-        col = col / (self.image.shape[1]-1)
+        row = row / (self.image.shape[0])
+        col = col / (self.image.shape[1])
         return torch.as_tensor([row, col]).type(torch.float32).to(device), pixel
 ## Utils
 import math
@@ -174,7 +174,7 @@ def saveImage(frame_note, psnr_note=39):
         reconstruction = torch.mul(reconstruction, 255.0).type(torch.int32)
         plt.imshow(reconstruction)
         plt.axis(False)
-        plt.savefig("c_elegans_reconstructions_ex4/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
+        plt.savefig("c_elegans_reconstructions_naive/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
 
 
@@ -205,7 +205,7 @@ for t in range(0, numFrames):
     optimizer = torch.optim.Adam(params=model_0.parameters(), lr=lr1, eps=10e-15)
     # Training Loop
     start = timer()
-    PSNR_thresh = 38
+    PSNR_thresh = 37
     batchCount = 0
     psnr_table = []
     psnr_table_epochs = []
@@ -256,7 +256,7 @@ for t in range(0, numFrames):
             saveImage(t, 25)
             savedAt27_5 = True
         elif (savedAt30 == False) and (psnr >= 30) and (psnr < 39):
-            lr1 = lr1/2
+            #lr1 = lr1/2
             endT = timer()
             time_series[t+1][3] = endT - start
             epoch_series[t+1][3] = epoch
@@ -293,24 +293,24 @@ for t in range(0, numFrames):
     plt.ylabel('PSNR')
     #NOT EPOCHS - THESE ARE BATCHES!!!
     plt.xlabel('Epoch')
-    plt.savefig("c_elegans_psnr_plots_ex4/hash_nerf_reconstruction_frame_"+str(t*40)+".png", bbox_inches="tight")
+    plt.savefig("c_elegans_psnr_plots_naive/hash_nerf_reconstruction_frame_"+str(t*40)+".png", bbox_inches="tight")
     plt.close()
 
 loss_at_epoch = torch.tensor(loss_at_epoch).cpu().numpy()
 psnr_at_epoch = torch.tensor(psnr_at_epoch).cpu().numpy()
 
 #epilogue
-np.savetxt('time_series_ex5.csv', time_series, delimiter=',', fmt='%f')
-np.savetxt('epoch_series_ex5.csv', epoch_series, delimiter=',', fmt='%f')
-np.savetxt('loss_series_ex5.csv', loss_series, delimiter=',', fmt='%f')
-np.savetxt('loss_at_epoch_ex5.csv', loss_at_epoch, delimiter=',', fmt='%f')
-np.savetxt('psnr_at_epoch_ex5.csv', psnr_at_epoch, delimiter=',', fmt='%f')
+np.savetxt('time_series_naive.csv', time_series, delimiter=',', fmt='%f')
+np.savetxt('epoch_series_naive.csv', epoch_series, delimiter=',', fmt='%f')
+np.savetxt('loss_series_naive.csv', loss_series, delimiter=',', fmt='%f')
+np.savetxt('loss_at_epoch_naive.csv', loss_at_epoch, delimiter=',', fmt='%f')
+np.savetxt('psnr_at_epoch_naive.csv', psnr_at_epoch, delimiter=',', fmt='%f')
 #plot net psnrs
 plt.plot(range(0,len(psnr_at_epoch)), psnr_at_epoch)
 plt.title('Train PSNR per epoch')
 plt.ylabel('PSNR')
 plt.xlabel('Epoch')
-plt.savefig("c_elegans_psnr_plots_ex4/hash_nerf_reconstruction_all_frames.png", bbox_inches="tight")
+plt.savefig("c_elegans_psnr_plots_naive/hash_nerf_reconstruction_all_frames.png", bbox_inches="tight")
 plt.close()
 #plot loss over all epochs
 #plot net psnrs
@@ -318,12 +318,8 @@ plt.plot(range(0,len(loss_at_epoch)), loss_at_epoch)
 plt.title('Train loss per epoch')
 plt.ylabel('MSE Loss')
 plt.xlabel('Epoch')
-plt.savefig("c_elegans_psnr_plots_ex4/hash_nerf_reconstruction_all_frames_loss.png", bbox_inches="tight")
+plt.savefig("c_elegans_psnr_plots_naive/hash_nerf_reconstruction_all_frames_loss.png", bbox_inches="tight")
 plt.close()
 print("Training Finished")
-
-
-
-
 
 
