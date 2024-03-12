@@ -56,7 +56,7 @@ class hashNerf(nn.Module):
                 input_shape: int,
                 hidden_units: int,
                 output_shape: int,
-                L=16, T=2**18, F=2, N_min=16, N_max=1024, num_output=3):
+                L=16, T=2**18, F=2, N_min=8, N_max=128, num_output=3):
         self.L = L
         self.T = T
         self.F = F
@@ -174,7 +174,7 @@ def saveImage(frame_note, psnr_note=39):
         reconstruction = torch.mul(reconstruction, 255.0).type(torch.int32)
         plt.imshow(reconstruction)
         plt.axis(False)
-        plt.savefig("c_elegans_reconstructions_naive2/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
+        plt.savefig("c_elegans_reconstructions_naive/hash_nerf_reconstruction_frame_"+str(frame_note)+"_psnr_"+str(psnr_note)+".png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
 
 
@@ -192,20 +192,21 @@ time_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
 epoch_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
 loss_series[0] = np.array([0, 25, 27.5, 30, 35, 40])
 
-# initialize model
-model_0 = hashNerf(32, 128, 3)
+
 #replace with len of video
 for t in range(0, numFrames):
+    print('fitting frame: '+str(t))
     workingFrame = video[t*40]
     training_data = SingleImageDataset(workingFrame)
     train_loader = DataLoader(training_data, batch_size=2**14, shuffle=True)
+    model_0 = hashNerf(32, 64, 3)
     #params
     lr1 = 0.01
     loss_fn = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(params=model_0.parameters(), lr=lr1, eps=10e-15)
     # Training Loop
     start = timer()
-    PSNR_thresh = 38
+    PSNR_thresh = 37
     batchCount = 0
     psnr_table = []
     psnr_table_epochs = []
@@ -217,7 +218,7 @@ for t in range(0, numFrames):
     exit_loop = False
 
     #same model used all time - i.e. weights carry over
-    for epoch in tqdm(range(0,100)):
+    for epoch in tqdm(range(0,80)):
         if exit_loop:
             break
         model_0.train()
@@ -256,7 +257,7 @@ for t in range(0, numFrames):
             saveImage(t, 25)
             savedAt27_5 = True
         elif (savedAt30 == False) and (psnr >= 30) and (psnr < 39):
-            lr1 = lr1/10
+            #lr1 = lr1/2
             endT = timer()
             time_series[t+1][3] = endT - start
             epoch_series[t+1][3] = epoch
@@ -293,25 +294,28 @@ for t in range(0, numFrames):
     plt.ylabel('PSNR')
     #NOT EPOCHS - THESE ARE BATCHES!!!
     plt.xlabel('Epoch')
-    plt.savefig("c_elegans_psnr_plots_naive2/hash_nerf_reconstruction_frame_"+str(t*40)+".png", bbox_inches="tight")
+    plt.savefig("c_elegans_psnr_plots_naive/hash_nerf_reconstruction_frame_"+str(t*40)+".png", bbox_inches="tight")
     plt.close()
-    model_0 = hashNerf(32, 128, 3) # create new model
+    print('deleting model')
+    del model_0
+    del training_data
+    del train_loader
 
 loss_at_epoch = torch.tensor(loss_at_epoch).cpu().numpy()
 psnr_at_epoch = torch.tensor(psnr_at_epoch).cpu().numpy()
 
 #epilogue
-np.savetxt('time_series_naive2.csv', time_series, delimiter=',', fmt='%f')
-np.savetxt('epoch_series_naive2.csv', epoch_series, delimiter=',', fmt='%f')
-np.savetxt('loss_series_naive2.csv', loss_series, delimiter=',', fmt='%f')
-np.savetxt('loss_at_epoch_naive2.csv', loss_at_epoch, delimiter=',', fmt='%f')
-np.savetxt('psnr_at_epoch_naive2.csv', psnr_at_epoch, delimiter=',', fmt='%f')
+np.savetxt('time_series_naive.csv', time_series, delimiter=',', fmt='%f')
+np.savetxt('epoch_series_naive.csv', epoch_series, delimiter=',', fmt='%f')
+np.savetxt('loss_series_naive.csv', loss_series, delimiter=',', fmt='%f')
+np.savetxt('loss_at_epoch_naive.csv', loss_at_epoch, delimiter=',', fmt='%f')
+np.savetxt('psnr_at_epoch_naive.csv', psnr_at_epoch, delimiter=',', fmt='%f')
 #plot net psnrs
 plt.plot(range(0,len(psnr_at_epoch)), psnr_at_epoch)
 plt.title('Train PSNR per epoch')
 plt.ylabel('PSNR')
 plt.xlabel('Epoch')
-plt.savefig("c_elegans_psnr_plots_naive2/hash_nerf_reconstruction_all_frames.png", bbox_inches="tight")
+plt.savefig("c_elegans_psnr_plots_naive/hash_nerf_reconstruction_all_frames.png", bbox_inches="tight")
 plt.close()
 #plot loss over all epochs
 #plot net psnrs
@@ -319,12 +323,8 @@ plt.plot(range(0,len(loss_at_epoch)), loss_at_epoch)
 plt.title('Train loss per epoch')
 plt.ylabel('MSE Loss')
 plt.xlabel('Epoch')
-plt.savefig("c_elegans_psnr_plots_naive2/hash_nerf_reconstruction_all_frames_loss.png", bbox_inches="tight")
+plt.savefig("c_elegans_psnr_plots_naive/hash_nerf_reconstruction_all_frames_loss.png", bbox_inches="tight")
 plt.close()
 print("Training Finished")
-
-
-
-
 
 

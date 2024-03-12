@@ -165,7 +165,7 @@ def saveImage(frame_note, psnr_note=39):
     #encode coordinates into debug matrix
     for i in range(0, x_test_T.shape[0]):
         for j in range(0, x_test_T.shape[1]):
-            reconstruction_input_matrix[i][j] = torch.as_tensor([i/(video.shape[1]-1.0),j/(video.shape[2]-1.0)]).type(torch.float32)
+            reconstruction_input_matrix[i][j] = torch.as_tensor([i/(video.shape[1]-3.0),j/(video.shape[2]-3.0)]).type(torch.float32)
     reconstruction_input_matrix = torch.flatten(reconstruction_input_matrix, 0, 1)
     model_0.eval()
     with torch.inference_mode():
@@ -217,7 +217,7 @@ for t in range(0, numFrames):
     exit_loop = False
 
     #same model used all time - i.e. weights carry over
-    for epoch in tqdm(range(0,100)):
+    for epoch in tqdm(range(0,50)):
         if exit_loop:
             break
         model_0.train()
